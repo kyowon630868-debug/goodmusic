@@ -79,6 +79,7 @@ const hud = {
   hint: $('#hud-hint'),
   timer: $('#hud-timer'),
   lightBtn: $('#btn-light'),
+  sprintBtn: $('#btn-sprint'),
 };
 
 function updateHud() {
@@ -89,6 +90,8 @@ function updateHud() {
   hud.stamina.style.width = `${game.player.stamina}%`;
   hud.timer.textContent = formatTime(game.time);
   hud.lightBtn.classList.toggle('on', game.player.light && game.player.battery > 0);
+  hud.sprintBtn.classList.toggle('on', game.player.sprinting);
+  hud.sprintBtn.classList.toggle('spent', game.player.stamina < 12);
 
   if (game.hintTimer > 0) {
     hud.hint.textContent = game.hint;
@@ -135,6 +138,17 @@ hud.lightBtn.addEventListener('pointerdown', (e) => {
   e.stopPropagation();
   input.toggleLight();
 });
+
+// 달리기는 누르고 있는 동안만
+const holdSprint = (held) => (e) => {
+  e.preventDefault();
+  e.stopPropagation();
+  input.setSprint(held);
+};
+hud.sprintBtn.addEventListener('pointerdown', holdSprint(true));
+hud.sprintBtn.addEventListener('pointerup', holdSprint(false));
+hud.sprintBtn.addEventListener('pointercancel', holdSprint(false));
+hud.sprintBtn.addEventListener('pointerleave', holdSprint(false));
 
 document.addEventListener('visibilitychange', () => {
   if (document.hidden) audio.stopMusic();

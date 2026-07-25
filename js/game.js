@@ -15,9 +15,9 @@ export const CFG = {
   cols: 13,
   rows: 17,
   playerRadius: 11,
-  walkSpeed: 108,
+  walkSpeed: 116,
   sprintSpeed: 176,
-  turnSpeed: 11,
+  turnSpeed: 14,
   staminaMax: 100,
   staminaDrain: 16,
   staminaRegen: 20,
@@ -31,6 +31,10 @@ export const CFG = {
   cameraLookAhead: 2.6 * TILE,
   presentCount: 5,
   batteryCount: 7,
+  // 이 거리 안에 들어오면 방울이 울리기 시작한다
+  jingleRange: 10 * TILE,
+  // 이 거리 안에서는 어둠 속에서도 선물의 붉은 기운이 어렴풋이 보인다
+  presentGlowRange: 4 * TILE,
   enemyRadius: 13,
   enemyWander: 62,
   enemySearch: 112,
@@ -222,7 +226,7 @@ export class Game {
     }
     if (p.battery <= 0) p.light = false;
 
-    // 조준: 조이스틱 방향을 따라가되, 오른쪽 드래그로 미세 조정
+    // 손전등은 걸어가는 쪽을 비춘다
     const moveMag = Math.hypot(input.x, input.y);
     if (moveMag > 0.15) {
       const target = Math.atan2(input.y, input.x);
@@ -458,18 +462,26 @@ export class Game {
       }
     }
 
-    // 가장 가까운 선물의 방울 소리 — 볼륨이 곧 나침반이다
+    // 가장 가까운 선물의 방울 소리 — 이게 곧 나침반이다.
+    // 가까울수록 빨라지고 높아지며, 좌우 위치는 스테레오로 알린다.
     const remaining = this.presents.filter((x) => !x.taken);
     if (remaining.length) {
       this.jingleTimer -= dt;
       if (this.jingleTimer <= 0) {
+        let nearest = null;
         let best = Infinity;
         for (const present of remaining) {
-          best = Math.min(best, Math.hypot(present.x - p.x, present.y - p.y));
+          const d = Math.hypot(present.x - p.x, present.y - p.y);
+          if (d < best) {
+            best = d;
+            nearest = present;
+          }
         }
-        const closeness = Math.max(0, 1 - best / (13 * TILE));
-        this.jingleTimer = 1.9 - closeness * 0.9;
-        if (closeness > 0.02) this.audio.jingle(closeness);
+        const closeness = Math.max(0, 1 - best / CFG.jingleRange);
+        // 멀리서는 2초에 한 번, 코앞에서는 거의 연타 — 금속탐지기처럼
+        this.jingleTimer = 2.0 - closeness * 1.72;
+        const rel = Math.atan2(nearest.y - p.y, nearest.x - p.x) - p.angle;
+        this.audio.jingle(closeness, Math.sin(rel) * 0.9);
       }
     }
   }

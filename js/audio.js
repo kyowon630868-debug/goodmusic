@@ -207,28 +207,39 @@ export class AudioEngine {
     src.stop(now + 0.1);
   }
 
-  // 가장 가까운 선물이 내는 방울 소리. 거리로 볼륨을 판단해 방향을 잡는다.
-  jingle(closeness) {
+  // 가장 가까운 선물이 내는 방울 소리.
+  // 가까울수록 크고, 높고, 자주 울린다. 좌우 방향은 스테레오로 알린다.
+  jingle(closeness, pan = 0) {
     if (!this.ready) return;
     const now = this.ctx.currentTime;
     const carrier = this.ctx.createOscillator();
     carrier.type = 'sine';
-    carrier.frequency.value = 1600 + closeness * 600;
+    carrier.frequency.value = 1150 + closeness * closeness * 1500;
     const mod = this.ctx.createOscillator();
     mod.type = 'sine';
     mod.frequency.value = 2400;
     const modGain = this.ctx.createGain();
-    modGain.gain.value = 900;
+    modGain.gain.value = 700 + closeness * 500;
     mod.connect(modGain);
     modGain.connect(carrier.frequency);
+
     const gain = this.ctx.createGain();
     carrier.connect(gain);
-    gain.connect(this.sfxBus);
-    this._env(gain, 0.02 + closeness * 0.14, 0.005, 0.35, now);
+
+    let tail = gain;
+    if (this.ctx.createStereoPanner) {
+      const panner = this.ctx.createStereoPanner();
+      panner.pan.value = Math.max(-1, Math.min(1, pan));
+      gain.connect(panner);
+      tail = panner;
+    }
+    tail.connect(this.sfxBus);
+
+    this._env(gain, 0.06 + closeness * 0.34, 0.004, 0.3 + closeness * 0.25, now);
     carrier.start(now);
     mod.start(now);
-    carrier.stop(now + 0.5);
-    mod.stop(now + 0.5);
+    carrier.stop(now + 0.7);
+    mod.stop(now + 0.7);
   }
 
   heartbeat(intensity) {

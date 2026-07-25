@@ -109,6 +109,7 @@ export class Renderer {
       ctx.restore();
     }
 
+    this._presentGlow(ctx, game);
     this._drawPlayer(ctx, game, lightOn);
 
     // 화면 효과
@@ -348,6 +349,31 @@ export class Renderer {
       ctx.globalCompositeOperation = 'source-over';
     }
 
+    ctx.restore();
+  }
+
+  // 코앞까지 오면 어둠 속에서도 붉은 기운이 어렴풋이 번진다.
+  // 빛 영역 밖에 그리므로 클리핑 뒤에 따로 그린다.
+  _presentGlow(ctx, game) {
+    const p = game.player;
+    const range = CFG.presentGlowRange;
+    const pulse = 0.72 + Math.sin(game.time * 3.4) * 0.28;
+    ctx.save();
+    ctx.globalCompositeOperation = 'lighter';
+    for (const present of game.presents) {
+      if (present.taken) continue;
+      const dist = Math.hypot(present.x - p.x, present.y - p.y);
+      if (dist > range) continue;
+      const strength = (1 - dist / range) * pulse;
+      const r = 34 + strength * 30;
+      const glow = ctx.createRadialGradient(present.x, present.y, 0, present.x, present.y, r);
+      glow.addColorStop(0, `rgba(206,48,40,${0.44 * strength})`);
+      glow.addColorStop(1, 'rgba(196,44,38,0)');
+      ctx.fillStyle = glow;
+      ctx.beginPath();
+      ctx.arc(present.x, present.y, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
     ctx.restore();
   }
 
