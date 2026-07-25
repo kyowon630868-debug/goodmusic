@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no, maximum-scale=1">
+<meta name="theme-color" content="#000000">
+<meta name="description" content="정전된 집에서 선물 다섯 개를 찾아 탈출하는 모바일 공포 게임">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<title>고요한 밤</title>
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+
+<canvas id="game"></canvas>
+<div id="touch-surface"></div>
+
+<div id="stick"><div class="knob"></div></div>
+
+<div id="hud">
+  <div class="hud-row">
+    <div class="hud-chip"><span class="label">선물</span><span id="hud-presents">0 / 5</span></div>
+    <div class="hud-chip"><span id="hud-timer">0:00</span></div>
+  </div>
+  <div class="bars">
+    <div class="bar"><span class="bar-label">배터리</span><div class="bar-track"><div id="hud-battery-fill" class="bar-fill battery"></div></div></div>
+    <div class="bar"><span class="bar-label">체력</span><div class="bar-track"><div id="hud-stamina-fill" class="bar-fill stamina"></div></div></div>
+  </div>
+</div>
+
+<div id="hud-hint"></div>
+
+<button id="btn-light" aria-label="손전등">
+  <svg viewBox="0 0 24 24" width="30" height="30" aria-hidden="true">
+    <path d="M8 2h8l-1 5H9L8 2zm1 6h6l-.6 4H9.6L9 8zm.8 5.5h4.4l-.5 8.5h-3.4l-.5-8.5z" fill="currentColor"/>
+  </svg>
+</button>
+
+<div id="screen-title" class="screen show">
+  <div class="panel">
+    <h1>고요한 밤</h1>
+    <p class="tagline">정전된 집. 트리 밑 선물은 다섯 개.<br>그리고 당신 말고 무언가가 더 있습니다.</p>
+    <ul class="rules">
+      <li><b>왼쪽</b> 화면을 끌어 이동 · 시선</li>
+      <li><b>오른쪽</b> 화면을 누르면 달리기, 좌우로 끌면 둘러보기</li>
+      <li><b>손전등</b> 버튼으로 불을 켜고 끕니다</li>
+      <li>선물은 <b>방울 소리</b>로 알립니다. 소리가 클수록 가깝습니다</li>
+      <li class="warn">불빛은 그것을 부릅니다. 보이면 끄고 도망치세요</li>
+    </ul>
+    <button id="btn-start" class="primary">시작하기</button>
+    <p id="title-best" class="best"></p>
+    <p class="note">이어폰을 쓰면 훨씬 무섭습니다</p>
+  </div>
+</div>
+
+<div id="screen-loading" class="screen">
+  <div class="panel">
+    <p class="loading-text">집 안의 불을 끄는 중…</p>
+    <div class="loading-track"><div id="loading-bar"></div></div>
+  </div>
+</div>
+
+<div id="screen-dead" class="screen dark">
+  <div class="panel">
+    <h2 class="dead-title">잡혔습니다</h2>
+    <p id="dead-stats" class="stats"></p>
+    <button id="btn-retry" class="primary">다시 시도</button>
+  </div>
+</div>
+
+<div id="screen-win" class="screen">
+  <div class="panel">
+    <h2 class="win-title">탈출</h2>
+    <p class="tagline">문이 등 뒤에서 닫힙니다.<br>안에서는 아직 캐롤이 흐르고 있습니다.</p>
+    <p id="win-stats" class="stats"></p>
+    <button id="btn-again" class="primary">한 번 더</button>
+  </div>
+</div>
+
+<script type="module" src="js/main.js"></script>
+</body>
+</html>
