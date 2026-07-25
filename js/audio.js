@@ -5,6 +5,13 @@
 const CREEPY_TRACK = 'Christmas Time Again.mp3';
 const ESCAPE_TRACK = 'A Magical Evening Begins.mp3';
 
+function decodeBase64(b64) {
+  const bin = atob(b64);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes.buffer;
+}
+
 export class AudioEngine {
   constructor() {
     this.ready = false;
@@ -59,11 +66,12 @@ export class AudioEngine {
       ['creepy', CREEPY_TRACK],
       ['escape', ESCAPE_TRACK],
     ];
+    // 단일 파일로 빌드한 경우 음원이 base64 로 함께 들어온다
+    const inline = typeof window !== 'undefined' ? window.__TRACKS : null;
     let done = 0;
     for (const [name, file] of files) {
       try {
-        const res = await fetch(encodeURIComponent(file));
-        const arr = await res.arrayBuffer();
+        const arr = inline && inline[name] ? decodeBase64(inline[name]) : await (await fetch(encodeURIComponent(file))).arrayBuffer();
         this.buffers[name] = await this.ctx.decodeAudioData(arr);
       } catch (err) {
         // 음악이 없어도 게임은 돌아가야 한다
