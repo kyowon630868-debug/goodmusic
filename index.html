@@ -1,0 +1,566 @@
+<meta charset="utf-8">
+<title>엄마 몰래 게임</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Jua&family=Noto+Sans+KR:wght@400;700&display=swap" rel="stylesheet">
+<style>
+/* Layout: one-screen game. HUD on top, the living-room scene fills the middle, one big hold-to-hide button at the thumb. */
+:root{
+  --wall:#D9E2F2;
+  --wall-dark:#C4D0E6;
+  --floor:#C9A77B;
+  --floor-dark:#B58F62;
+  --navy:#1B2A8C;
+  --navy-deep:#101A55;
+  --sofa:#EFE8D8;
+  --sofa-shade:#D6CBB3;
+  --shirt:#F4DF7A;
+  --shorts:#52309A;
+  --teal:#2DB7B0;
+  --skin:#F2C7A0;
+  --alert:#E5484D;
+  --ink:#14173D;
+  --paper:#FFFFFF;
+  --gold:#FFD23F;
+  --font-display:'Jua','Noto Sans KR',system-ui,sans-serif;
+  --font-body:'Noto Sans KR',system-ui,sans-serif;
+}
+html,body{height:100%}
+body{
+  box-sizing:border-box;margin:0;background:var(--navy-deep);color:var(--paper);
+  font-family:var(--font-body);
+  padding-left:max(16px,env(safe-area-inset-left,0px));
+  padding-right:max(16px,env(safe-area-inset-right,0px));
+  padding-block:10px;
+  -webkit-user-select:none;user-select:none;-webkit-touch-callout:none;
+  -webkit-tap-highlight-color:transparent;
+}
+.app{height:100%;max-width:520px;margin:0 auto;display:flex;flex-direction:column;gap:10px;min-height:0}
+
+/* HUD */
+.hud{display:flex;align-items:center;gap:12px}
+.hearts{display:flex;gap:3px;flex:none}
+.hearts svg{width:22px;height:22px;display:block;transition:transform .2s}
+.hearts svg.off{opacity:.25;transform:scale(.8)}
+.gauge{flex:1;min-width:0;display:flex;align-items:center;gap:8px}
+.gauge .gl{font-family:var(--font-display);font-size:15px;color:var(--gold);flex:none}
+.bar{flex:1;min-width:0;height:16px;border-radius:99px;background:rgba(255,255,255,.14);overflow:hidden;position:relative}
+.bar i{display:block;height:100%;width:0%;background:linear-gradient(90deg,var(--gold),#FF9F1C);border-radius:99px;transition:width .12s linear}
+.gauge b{font-family:var(--font-display);font-weight:400;font-size:15px;min-width:2.8em;text-align:right;font-variant-numeric:tabular-nums}
+.clock{font-family:var(--font-display);font-size:20px;min-width:2.2em;text-align:center;font-variant-numeric:tabular-nums;flex:none}
+.clock.low{color:#FF7A7F}
+.snd{flex:none;border:0;background:rgba(255,255,255,.12);color:var(--paper);width:34px;height:34px;border-radius:50%;display:grid;place-items:center;cursor:pointer;padding:0}
+.snd svg{width:18px;height:18px}
+.snd:focus-visible,.btn:focus-visible,.hide-btn:focus-visible{outline:3px solid var(--gold);outline-offset:2px}
+
+/* Stage */
+.stage{flex:1;min-height:0;position:relative;border-radius:18px;overflow:hidden;background:var(--wall);touch-action:manipulation}
+.stage>svg{position:absolute;inset:0;width:100%;height:100%;display:block}
+.stage.shake{animation:shake .45s}
+@keyframes shake{0%,100%{transform:none}15%{transform:translate(-7px,3px)}35%{transform:translate(6px,-4px)}55%{transform:translate(-5px,2px)}75%{transform:translate(4px,-2px)}}
+.flash{position:absolute;inset:0;background:var(--alert);opacity:0;pointer-events:none;transition:opacity .35s}
+.stage[data-mode="caught"] .flash{opacity:.28}
+
+/* Scene pieces */
+.f{display:none}
+.stage[data-face="play"] .fp,.stage[data-face="alarm"] .fa,.stage[data-face="study"] .fs,.stage[data-face="caught"] .fc{display:block}
+#tablet{transition:transform .12s ease-out,opacity .1s;transform-origin:170px 360px}
+#tablet.bump{animation:bump .12s}
+@keyframes bump{50%{transform:scale(1.04)}}
+.stage[data-hide="1"] #tablet,.stage[data-mode="caught"] #tablet{transform:translateY(46px) scale(.9);opacity:0}
+#book{transition:transform .12s ease-out}
+.stage[data-hide="1"] #book{transform:translateY(-46px)}
+#handsPlay,#handsStudy{transition:opacity .1s}
+#handsStudy{opacity:0}
+.stage[data-hide="1"] #handsPlay,.stage[data-mode="caught"] #handsPlay{opacity:0}
+.stage[data-hide="1"] #handsStudy{opacity:1}
+#leaf{transform-origin:225px 0;transition:transform .14s ease-out}
+.stage[data-door="1"] #leaf{transform:scaleX(.16)}
+#mom{opacity:0;transition:opacity .1s}
+.stage[data-door="1"] #mom{opacity:1}
+#shadow{opacity:0;filter:blur(3px)}
+.stage[data-mom="warn"] #shadow{opacity:.62}
+.stage[data-mom="warn"] #handle{animation:jig .18s infinite alternate}
+@keyframes jig{from{transform:rotate(-14deg)}to{transform:rotate(14deg)}}
+#handle{transform-box:fill-box;transform-origin:center}
+.mm{display:none}
+.stage[data-mood="calm"] .mc,.stage[data-mood="sus"] .ms,.stage[data-mood="angry"] .ma{display:block}
+.stage[data-mood="angry"] #momFace{fill:#F0A58C}
+#bubble{opacity:0;transition:opacity .12s}
+.stage[data-bubble="1"] #bubble{opacity:1}
+.sweat{display:none}
+.stage[data-face="alarm"] .sweat{display:block;animation:drip .6s infinite alternate}
+@keyframes drip{to{transform:translateY(6px)}}
+.snow circle{animation:fall 2.4s linear infinite}
+.snow circle:nth-child(2){animation-delay:-.8s;animation-duration:2.9s}
+.snow circle:nth-child(3){animation-delay:-1.6s;animation-duration:2.1s}
+.snow circle:nth-child(4){animation-delay:-2.1s}
+@keyframes fall{from{transform:translateY(-8px)}to{transform:translateY(74px)}}
+.lights circle{animation:twinkle 1s steps(2) infinite}
+.lights circle:nth-child(2n){animation-delay:-.5s}
+@keyframes twinkle{50%{opacity:.2}}
+
+/* Overlay */
+.overlay{position:absolute;inset:0;display:grid;place-items:center;padding:16px;background:rgba(16,26,85,.62);backdrop-filter:blur(2px);transition:opacity .2s}
+.overlay[hidden]{display:none}
+.card{background:var(--paper);color:var(--ink);border-radius:20px;padding:22px 20px 20px;width:100%;max-width:340px;box-shadow:0 10px 0 rgba(16,26,85,.35);text-align:left}
+.card h1{font-family:var(--font-display);font-weight:400;font-size:34px;line-height:1.1;margin:0 0 6px;color:var(--navy);text-wrap:balance}
+.card p{margin:0 0 12px;font-size:15px;line-height:1.5}
+.card ul{margin:0 0 16px;padding:0;list-style:none;display:grid;gap:8px}
+.card li{font-size:14px;line-height:1.45;padding-left:14px;position:relative}
+.card li::before{content:"";position:absolute;left:0;top:.6em;width:6px;height:6px;border-radius:50%;background:var(--navy)}
+.card .stats{display:flex;gap:10px;margin:0 0 16px}
+.card .stats div{flex:1;background:#EEF2FB;border-radius:12px;padding:8px 10px;font-size:12px;color:#4a5280}
+.card .stats b{display:block;font-family:var(--font-display);font-weight:400;font-size:24px;color:var(--navy);font-variant-numeric:tabular-nums}
+.btn{display:block;width:100%;border:0;border-radius:14px;background:var(--navy);color:var(--paper);font-family:var(--font-display);font-size:22px;padding:13px 16px;cursor:pointer;box-shadow:0 5px 0 var(--navy-deep)}
+.btn:active{transform:translateY(3px);box-shadow:0 2px 0 var(--navy-deep)}
+
+/* Bottom controls */
+.hint{min-height:1.4em;text-align:center;font-size:14px;font-weight:700;color:#C9D3FF;margin:0}
+.hint.warn{color:#FFB3B6}
+.hide-btn{flex:none;border:0;width:100%;border-radius:20px;background:var(--gold);color:var(--ink);font-family:var(--font-display);font-size:28px;padding:18px 16px;cursor:pointer;box-shadow:0 7px 0 #C79A00;touch-action:none;transition:transform .05s,box-shadow .05s}
+.hide-btn small{display:block;font-family:var(--font-body);font-size:12px;font-weight:700;opacity:.7;margin-top:2px}
+.hide-btn.down{transform:translateY(5px);box-shadow:0 2px 0 #C79A00;background:#FFE680}
+
+/* Floating text */
+.pop{position:absolute;pointer-events:none;font-family:var(--font-display);font-size:22px;color:var(--navy);text-shadow:0 2px 0 #fff,0 0 8px #fff;animation:pop .9s ease-out forwards;transform:translateX(-50%);white-space:nowrap}
+.pop.big{font-size:26px;color:#0D8A55}
+.pop.bad{color:var(--alert)}
+@keyframes pop{from{opacity:1;margin-top:0}to{opacity:0;margin-top:-60px}}
+@media (prefers-reduced-motion:reduce){.stage.shake{animation:none}.snow circle,.lights circle{animation:none}.pop{animation-duration:.01s}}
+</style>
+
+<div class="app">
+  <header class="hud">
+    <div class="hearts" id="hearts" aria-label="남은 하트"></div>
+    <div class="gauge">
+      <span class="gl">재미</span>
+      <div class="bar" role="progressbar" aria-label="재미 게이지" aria-valuemin="0" aria-valuemax="100" id="barA"><i id="fun"></i></div>
+      <b id="funN">0%</b>
+    </div>
+    <div class="clock" id="clock" aria-label="학원 가기까지 남은 시간">90</div>
+    <button class="snd" id="snd" type="button" aria-label="소리 켜기 끄기"></button>
+  </header>
+
+  <main class="stage" id="stage" data-mode="title" data-mom="away" data-hide="0" data-mood="calm" data-face="play" data-door="0" data-bubble="0">
+    <svg viewBox="0 0 400 480" preserveAspectRatio="xMidYMax meet" role="img" aria-label="소파에 앉아 태블릿으로 게임하는 아이와 뒤쪽의 파란 문">
+      <defs>
+        <clipPath id="glassClip"><rect x="240" y="56" width="90" height="108" rx="4"/></clipPath>
+        <clipPath id="screenClip"><rect x="107" y="325" width="126" height="64" rx="4"/></clipPath>
+        <linearGradient id="hall" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3b3566"/><stop offset="1" stop-color="#1d1a3a"/></linearGradient>
+        <linearGradient id="frost" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#e3f1f7"/><stop offset="1" stop-color="#b7d2e2"/></linearGradient>
+      </defs>
+
+      <!-- room -->
+      <rect x="-600" y="-600" width="1600" height="900" fill="var(--wall)"/>
+      <rect x="-600" y="288" width="1600" height="14" fill="var(--wall-dark)"/>
+      <rect x="-600" y="302" width="1600" height="900" fill="var(--floor)"/>
+      <g stroke="var(--floor-dark)" stroke-width="2" opacity=".7">
+        <path d="M-600 340H1000M-600 392H1000M-600 450H1000"/>
+        <path d="M60 302V340M240 340V392M120 392V450M330 450V520M20 340V392"/>
+      </g>
+
+      <!-- door -->
+      <rect x="213" y="28" width="144" height="276" fill="var(--navy-deep)"/>
+      <rect x="225" y="40" width="120" height="262" fill="url(#hall)"/>
+      <g id="mom">
+        <rect x="248" y="170" width="74" height="132" rx="10" fill="#E8647A"/>
+        <rect x="256" y="214" width="58" height="18" rx="9" fill="var(--skin)"/>
+        <rect x="278" y="150" width="14" height="20" fill="var(--skin)"/>
+        <circle cx="285" cy="104" r="14" fill="#2B1B17"/>
+        <circle id="momFace" cx="285" cy="128" r="30" fill="var(--skin)"/>
+        <path d="M253 130Q250 92 285 94Q320 92 317 130Q310 108 285 108Q260 108 253 130Z" fill="#2B1B17"/>
+        <g fill="#2B1B17">
+          <ellipse cx="274" cy="130" rx="3" ry="3.6"/><ellipse cx="296" cy="130" rx="3" ry="3.6"/>
+        </g>
+        <g class="mm mc" stroke="#2B1B17" stroke-width="2.4" fill="none" stroke-linecap="round">
+          <path d="M268 122Q274 119 280 122M290 122Q296 119 302 122"/><path d="M276 142Q285 150 294 142"/>
+        </g>
+        <g class="mm ms" stroke="#2B1B17" stroke-width="2.4" fill="none" stroke-linecap="round">
+          <path d="M268 120L280 123M302 120L290 123"/><path d="M277 144H293"/>
+        </g>
+        <g class="mm ma" stroke="#2B1B17" stroke-width="3" fill="none" stroke-linecap="round">
+          <path d="M266 118L281 125M304 118L289 125"/><path d="M275 148Q285 138 295 148"/>
+        </g>
+      </g>
+      <g id="leaf">
+        <rect x="225" y="40" width="120" height="262" fill="var(--navy)"/>
+        <rect x="240" y="56" width="90" height="108" rx="4" fill="url(#frost)"/>
+        <g clip-path="url(#glassClip)">
+          <g fill="#fff" opacity=".35">
+            <circle cx="255" cy="75" r="9"/><circle cx="300" cy="68" r="12"/><circle cx="318" cy="105" r="9"/>
+            <circle cx="262" cy="118" r="11"/><circle cx="298" cy="140" r="10"/><circle cx="250" cy="152" r="7"/>
+          </g>
+          <g id="shadow">
+            <g transform="translate(285 0)" fill="#1b1f4d">
+              <circle cx="0" cy="96" r="17"/><path d="M-34 170Q-30 118 0 116Q30 118 34 170Z"/>
+            </g>
+          </g>
+        </g>
+        <rect x="240" y="180" width="90" height="104" rx="4" fill="none" stroke="#0f1a63" stroke-width="3" opacity=".7"/>
+        <g id="handle"><rect x="326" y="176" width="9" height="22" rx="4" fill="#d9dbe8"/><circle cx="330" cy="200" r="7" fill="#d9dbe8"/></g>
+      </g>
+      <g id="shadowFloor"></g>
+
+      <!-- speech bubble -->
+      <g id="bubble" transform="translate(16 36)">
+        <path d="M14 0H168Q184 0 184 16V56Q184 72 168 72H14Q-2 72 -2 56V16Q-2 0 14 0Z" fill="#fff" stroke="var(--navy)" stroke-width="3"/>
+        <path d="M184 30L206 44L184 52Z" fill="#fff" stroke="var(--navy)" stroke-width="3" stroke-linejoin="round"/>
+        <rect x="178" y="28" width="8" height="26" fill="#fff"/>
+        <text id="bt" x="91" y="30" text-anchor="middle" font-family="Jua, 'Noto Sans KR', sans-serif" font-size="18" fill="var(--ink)"><tspan id="bt1" x="91"></tspan><tspan id="bt2" x="91" dy="24"></tspan></text>
+      </g>
+
+      <!-- sofa -->
+      <rect x="6" y="236" width="388" height="260" rx="42" fill="var(--sofa-shade)"/>
+      <rect x="-6" y="296" width="62" height="200" rx="30" fill="var(--sofa)"/>
+      <rect x="344" y="296" width="62" height="200" rx="30" fill="var(--sofa)"/>
+      <rect x="42" y="350" width="316" height="140" rx="30" fill="var(--sofa)"/>
+      <!-- backpack -->
+      <g>
+        <rect x="278" y="322" width="62" height="64" rx="16" fill="#1d1d24"/>
+        <rect x="286" y="352" width="46" height="26" rx="8" fill="#2b2b35"/>
+        <path d="M290 322Q309 304 328 322" stroke="#1d1d24" stroke-width="6" fill="none"/>
+        <text x="309" y="342" text-anchor="middle" font-family="Jua, sans-serif" font-size="12" fill="#fff">학원</text>
+      </g>
+
+      <!-- kid -->
+      <g id="kid">
+        <rect x="128" y="424" width="30" height="46" rx="14" fill="var(--skin)"/>
+        <rect x="182" y="424" width="30" height="46" rx="14" fill="var(--skin)"/>
+        <rect x="116" y="368" width="108" height="62" rx="18" fill="var(--shorts)"/>
+        <rect x="116" y="368" width="9" height="62" rx="4" fill="var(--teal)"/>
+        <rect x="125" y="368" width="4" height="62" fill="#fff"/>
+        <rect x="215" y="368" width="9" height="62" rx="4" fill="var(--teal)"/>
+        <rect x="211" y="368" width="4" height="62" fill="#fff"/>
+        <rect x="116" y="288" width="108" height="100" rx="28" fill="var(--shirt)"/>
+        <circle cx="112" cy="308" r="20" fill="var(--shirt)"/><circle cx="228" cy="308" r="20" fill="var(--shirt)"/>
+        <rect x="158" y="274" width="24" height="22" fill="var(--skin)"/>
+        <path d="M148 290Q170 304 192 290" stroke="#d9c25a" stroke-width="3" fill="none"/>
+
+        <!-- head -->
+        <circle cx="128" cy="248" r="7" fill="var(--skin)"/><circle cx="212" cy="248" r="7" fill="var(--skin)"/>
+        <circle cx="170" cy="246" r="40" fill="var(--skin)"/>
+        <path d="M127 250Q118 198 170 196Q222 198 213 250Q208 222 192 220Q172 232 150 220Q134 224 127 250Z" fill="#14141a"/>
+        <circle cx="148" cy="262" r="6" fill="#F08F85" opacity=".35"/><circle cx="192" cy="262" r="6" fill="#F08F85" opacity=".35"/>
+        <!-- faces -->
+        <g class="f fp">
+          <ellipse cx="154" cy="252" rx="3.6" ry="4.6" fill="#14141a"/><ellipse cx="186" cy="252" rx="3.6" ry="4.6" fill="#14141a"/>
+          <path d="M162 272Q170 279 178 272" stroke="#14141a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </g>
+        <g class="f fa">
+          <circle cx="153" cy="251" r="8" fill="#fff"/><circle cx="187" cy="251" r="8" fill="#fff"/>
+          <circle cx="157" cy="248" r="3.6" fill="#14141a"/><circle cx="191" cy="248" r="3.6" fill="#14141a"/>
+          <path d="M144 236Q153 230 162 235M178 235Q187 230 196 236" stroke="#14141a" stroke-width="2.4" fill="none" stroke-linecap="round"/>
+          <ellipse cx="170" cy="274" rx="5" ry="6" fill="#7a2f2f"/>
+        </g>
+        <g class="f fs">
+          <path d="M148 254Q154 258 160 254M180 254Q186 258 192 254" stroke="#14141a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+          <path d="M164 273Q170 276 176 273" stroke="#14141a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </g>
+        <g class="f fc">
+          <path d="M147 250L160 254M193 250L180 254" stroke="#14141a" stroke-width="2.8" stroke-linecap="round"/>
+          <ellipse cx="154" cy="258" rx="3" ry="3.6" fill="#14141a"/><ellipse cx="186" cy="258" rx="3" ry="3.6" fill="#14141a"/>
+          <path d="M162 277Q170 270 178 277" stroke="#14141a" stroke-width="2.6" fill="none" stroke-linecap="round"/>
+        </g>
+        <path class="sweat" d="M214 226Q220 236 214 242Q208 236 214 226Z" fill="#7cc6ff"/>
+
+        <!-- book -->
+        <g id="book">
+          <path d="M92 440L170 424L170 470L84 474Z" fill="#fff" stroke="#c9c9d6" stroke-width="2"/>
+          <path d="M170 424L248 440L256 474L170 470Z" fill="#f7f7fb" stroke="#c9c9d6" stroke-width="2"/>
+          <g stroke="#b8bccf" stroke-width="2" stroke-linecap="round">
+            <path d="M102 446L160 435M100 456L160 445M98 465L160 455M180 435L238 447M180 445L240 458M180 455L242 468"/>
+          </g>
+          <text x="128" y="451" font-family="Jua, sans-serif" font-size="9" fill="#2E8B57" transform="rotate(-10 128 451)">English</text>
+        </g>
+        <!-- hands on book -->
+        <g id="handsStudy">
+          <circle cx="126" cy="438" r="11" fill="var(--skin)"/><circle cx="214" cy="440" r="11" fill="var(--skin)"/>
+          <rect x="212" y="418" width="5" height="30" rx="2" fill="#E5484D" transform="rotate(18 214 440)"/>
+        </g>
+
+        <!-- tablet -->
+        <g id="tablet">
+          <rect x="98" y="316" width="144" height="88" rx="12" fill="#7E7AA6"/>
+          <rect x="102" y="320" width="136" height="80" rx="9" fill="#5e5a88"/>
+          <rect x="107" y="325" width="126" height="64" rx="4" fill="#0f1433"/>
+          <g clip-path="url(#screenClip)">
+            <rect x="107" y="325" width="126" height="64" fill="#16204f"/>
+            <g transform="translate(170 328)">
+              <path d="M0 4L-5 14H5Z" fill="#ffd23f"/>
+              <path d="M0 10L-14 30H14Z" fill="#1f9d63"/><path d="M0 22L-20 46H20Z" fill="#1b8a57"/><path d="M0 36L-26 60H26Z" fill="#167a4c"/>
+              <rect x="-4" y="58" width="8" height="6" fill="#7b4a2b"/>
+              <g class="lights"><circle cx="-5" cy="26" r="2.2" fill="#ff5a5f"/><circle cx="8" cy="40" r="2.2" fill="#ffd23f"/><circle cx="-12" cy="46" r="2.2" fill="#6ec6ff"/><circle cx="14" cy="54" r="2.2" fill="#ff5a5f"/><circle cx="0" cy="34" r="2.2" fill="#fff"/></g>
+            </g>
+            <g class="snow" fill="#fff" opacity=".85">
+              <circle cx="126" cy="326" r="1.8"/><circle cx="148" cy="326" r="1.4"/><circle cx="204" cy="326" r="1.8"/><circle cx="222" cy="326" r="1.4"/>
+            </g>
+            <text x="113" y="336" font-family="Jua, sans-serif" font-size="9" fill="#ffd23f">TREE RUSH</text>
+          </g>
+        </g>
+        <!-- hands on tablet -->
+        <g id="handsPlay">
+          <circle cx="98" cy="352" r="11" fill="var(--skin)"/><circle cx="242" cy="352" r="11" fill="var(--skin)"/>
+          <ellipse cx="108" cy="386" rx="9" ry="12" fill="var(--skin)" transform="rotate(-18 108 386)"/><ellipse cx="232" cy="386" rx="9" ry="12" fill="var(--skin)" transform="rotate(18 232 386)"/>
+        </g>
+        <rect id="tabletHit" x="98" y="316" width="144" height="88" fill="transparent" style="cursor:pointer"/>
+      </g>
+    </svg>
+    <div class="flash"></div>
+    <div class="overlay" id="overlay"></div>
+  </main>
+
+  <p class="hint" id="hint" aria-live="polite"></p>
+  <button class="hide-btn" id="hideBtn" type="button">숨겨! <small>꾹 누르는 동안 숨어요 (스페이스바)</small></button>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const stage=$('stage'),overlay=$('overlay'),hideBtn=$('hideBtn');
+  const TOTAL=90;
+  const BGM={play:'Christmas Time Again.mp3',win:'A Magical Evening Begins.mp3'};
+  const HEART='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21C5 15.5 2 12.2 2 8.6 2 5.9 4.1 4 6.6 4c1.9 0 3.7 1 5.4 3 1.7-2 3.5-3 5.4-3C19.900 4 22 5.900 22 8.600 22 12.200 19 15.500 12 21Z" fill="#FF5A6E"/></svg>';
+
+  let muted=false,ac=null,holding=false,last=0,G=fresh(),heartsKey='',bestKey='momHideBestV1';
+
+  function fresh(){
+    return {mode:'title',fun:0,lives:3,time:TOTAL,mom:'away',momT:0,real:true,warnLen:1,grace:0,next:3.5,caught:0,safe:0,note:'',noteT:0,result:''};
+  }
+  function loadBest(){try{return +localStorage.getItem(bestKey)||0}catch(e){return 0}}
+  function saveBest(v){try{localStorage.setItem(bestKey,String(v))}catch(e){}}
+
+  /* ---------- audio ---------- */
+  const bgm=new Audio();bgm.loop=true;bgm.preload='auto';let track='';
+  function playBgm(name){
+    if(muted)return;
+    try{
+      if(track!==name){track=name;bgm.src=encodeURI(name);bgm.currentTime=0}
+      const p=bgm.play();if(p&&p.catch)p.catch(()=>{});
+    }catch(e){}
+  }
+  function stopBgm(){try{bgm.pause()}catch(e){}}
+  function ctx(){
+    if(muted)return null;
+    if(!ac){try{ac=new (window.AudioContext||window.webkitAudioContext)()}catch(e){return null}}
+    if(ac.state==='suspended'&&ac.resume)ac.resume().catch(()=>{});
+    return ac;
+  }
+  function tone(f1,f2,dur,type,vol,delay){
+    const c=ctx();if(!c)return;
+    const t=c.currentTime+(delay||0),o=c.createOscillator(),g=c.createGain();
+    o.type=type||'sine';o.frequency.setValueAtTime(f1,t);
+    if(f2!==f1)o.frequency.exponentialRampToValueAtTime(f2,t+dur);
+    g.gain.setValueAtTime(0.0001,t);g.gain.exponentialRampToValueAtTime(vol,t+0.01);g.gain.exponentialRampToValueAtTime(0.0001,t+dur);
+    o.connect(g);g.connect(c.destination);o.start(t);o.stop(t+dur+0.03);
+  }
+  const sfx={
+    tap(){tone(700+Math.random()*300,1200,.06,'triangle',.08)},
+    hide(){tone(520,260,.09,'sine',.1)},
+    unhide(){tone(260,520,.09,'sine',.07)},
+    steps(len){const n=Math.max(2,Math.round(len/.28));for(let i=0;i<n;i++)tone(95,55,.1,'sine',.4,i*.28)},
+    creak(){tone(220,110,.45,'sawtooth',.05)},
+    door(){tone(150,80,.15,'square',.04)},
+    caught(){tone(260,70,.5,'sawtooth',.1);tone(180,50,.6,'square',.07,.1)},
+    safe(){tone(660,990,.12,'triangle',.08);tone(990,1320,.12,'triangle',.07,.1)},
+    win(){[523,659,784,1047].forEach((f,i)=>tone(f,f,.22,'triangle',.12,i*.12))}
+  };
+
+  /* ---------- UI helpers ---------- */
+  const sndOn='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M16.500 8.500a5 5 0 0 1 0 7"/></svg>';
+  const sndOff='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4Z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>';
+  $('snd').innerHTML=sndOn;
+  $('snd').addEventListener('click',()=>{
+    muted=!muted;$('snd').innerHTML=muted?sndOff:sndOn;
+    if(muted)stopBgm();else if(G.mode==='play'||G.mode==='caught')playBgm(BGM.play);
+  });
+
+  function pop(text,x,y,cls){
+    const el=document.createElement('div');el.className='pop'+(cls?' '+cls:'');el.textContent=text;
+    el.style.left=x+'px';el.style.top=y+'px';stage.appendChild(el);
+    setTimeout(()=>el.remove(),950);
+  }
+  function popCenter(text,cls){pop(text,stage.clientWidth*.5,stage.clientHeight*.62,cls)}
+
+  function setHide(v){
+    if(v===holding)return;
+    holding=v;hideBtn.classList.toggle('down',v);
+    if(G.mode==='play'){v?sfx.hide():sfx.unhide()}
+  }
+
+  /* ---------- flow ---------- */
+  function start(){
+    G=fresh();G.mode='play';overlay.hidden=true;heartsKey='';
+    playBgm(BGM.play);ctx();
+  }
+  function caught(){
+    G.lives--;G.fun=Math.max(0,G.fun-10);G.mode='caught';G.caught=2.2;
+    stage.classList.remove('shake');void stage.offsetWidth;stage.classList.add('shake');
+    sfx.caught();popCenter('들켰다! 재미 -10','bad');
+  }
+  function end(kind){
+    G.mode='over';G.result=kind;
+    let best=loadBest();
+    if(kind==='win'){
+      const left=Math.round(G.time);
+      if(left>best){best=left;saveBest(left)}
+      sfx.win();playBgm(BGM.win);
+    }else{sfx.caught();stopBgm()}
+    showEnd(kind,best);
+  }
+  function showEnd(kind,best){
+    const win=kind==='win';
+    let title,msg;
+    if(win){title='성공! 몰래 실컷 놀았다';msg='엄마는 아이가 공부만 한 줄 알아요.'}
+    else if(kind==='lives'){title='게임기 압수!';msg='하트를 모두 잃었어요. 숙제부터 하래요.'}
+    else{title='학원 갈 시간!';msg='재미가 '+Math.floor(G.fun)+'%에서 멈췄어요. 너무 오래 숨어 있었나 봐요.'}
+    overlay.innerHTML='<div class="card"><h1>'+title+'</h1><p>'+msg+'</p>'+
+      '<div class="stats"><div>무사 통과<b>'+G.safe+'번</b></div><div>'+(win?'남은 시간':'재미 게이지')+'<b>'+(win?Math.round(G.time)+'초':Math.floor(G.fun)+'%')+'</b></div><div>최고 기록<b>'+(best?best+'초':'-')+'</b></div></div>'+
+      '<button class="btn" id="again" type="button">다시 하기</button></div>';
+    overlay.hidden=false;$('again').addEventListener('click',start);
+    setTimeout(()=>{const b=$('again');if(b)b.focus({preventScroll:true})},50);
+  }
+  function showTitle(){
+    overlay.innerHTML='<div class="card"><h1>엄마 몰래 게임</h1><p>엄마가 없을 때 마음껏 놀고, 엄마가 오면 재빨리 숨기는 숨바꼭질이에요.</p><ul>'+
+      '<li>게임하는 동안 재미 게이지가 차올라요. 태블릿을 톡톡 누르면 더 빨리 올라요.</li>'+
+      '<li>문 유리에 그림자가 비치고 손잡이가 덜덜 떨리면 엄마가 오는 중이에요. 숨기기 버튼을 꾹 누르세요.</li>'+
+      '<li>엄마가 있을 때 게임하다 들키면 하트가 깎여요. 학원 가기 전 '+TOTAL+'초 안에 재미 100%를 채우세요.</li></ul>'+
+      '<button class="btn" id="go" type="button">게임 시작</button></div>';
+    overlay.hidden=false;$('go').addEventListener('click',start);
+  }
+
+  /* ---------- update ---------- */
+  function update(dt){
+    if(G.mode==='caught'){
+      G.caught-=dt;
+      if(G.caught<=0){
+        if(G.lives<=0){end('lives');return}
+        G.mode='play';G.mom='away';G.next=3.5;
+      }
+      return;
+    }
+    G.time-=dt;
+    if(G.time<=0){G.time=0;end('time');return}
+    const lvl=Math.min(3,Math.floor(G.fun/25));
+    if(!holding)G.fun=Math.min(100,G.fun+2*dt);
+    if(G.noteT>0)G.noteT-=dt;
+
+    if(G.mom==='away'){
+      G.next-=dt;
+      if(G.next<=0){
+        G.real=Math.random()>(lvl?0.3:0.15);
+        G.warnLen=Math.max(.5,1.2-lvl*.2);G.momT=G.warnLen;G.mom='warn';
+        sfx.steps(G.warnLen);
+      }
+    }else if(G.mom==='warn'){
+      G.momT-=dt;
+      if(G.momT<=0){
+        if(G.real){G.mom='here';G.momT=1.6+Math.random();G.grace=Math.max(.4,.62-lvl*.07);sfx.creak()}
+        else{G.mom='away';G.next=1.6+Math.random()*2;G.note='휴, 그냥 지나갔네';G.noteT=1.4}
+      }
+    }else if(G.mom==='here'){
+      if(!holding){G.grace-=dt;if(G.grace<=0){caught();return}}
+      G.momT-=dt;
+      if(G.momT<=0){
+        G.mom='away';G.next=Math.max(2,3.2+Math.random()*3-lvl*.6);G.safe++;
+        G.fun=Math.min(100,G.fun+3);sfx.door();sfx.safe();popCenter('무사 통과 +3','big');
+      }
+    }
+    if(G.fun>=100)end('win');
+  }
+
+  /* ---------- render ---------- */
+  function setBubble(l1,l2){
+    $('bt1').textContent=l1||'';$('bt2').textContent=l2||'';
+    $('bt').setAttribute('y',l2?'30':'42');
+    stage.dataset.bubble=l1?'1':'0';
+  }
+  function render(){
+    const playing=G.mode==='play';
+    const momHere=G.mom==='here'||G.mode==='caught';
+    const hid=holding&&playing;
+    const d=stage.dataset;
+    d.mode=G.mode;d.mom=G.mom;d.hide=hid?'1':'0';d.door=momHere?'1':'0';
+    d.mood=G.mode==='caught'?'angry':(momHere?(holding?'calm':'sus'):'calm');
+    d.face=G.mode==='caught'?'caught':(hid?'study':((G.mom==='warn'||G.mom==='here')?'alarm':'play'));
+
+    if(G.mode==='caught')setBubble('게임기 압수!!','숙제부터 해!');
+    else if(G.mom==='here')holding?setBubble('어머, 공부','열심히 하네~'):setBubble('너 지금','뭐 하니?!');
+    else if(G.mom==='warn')setBubble('저벅… 저벅…');
+    else setBubble('');
+
+    if(G.mom==='warn'){
+      const p=1-G.momT/G.warnLen;
+      const x=G.real?85*(1-p):85-175*p;
+      $('shadow').style.transform='translateX('+x.toFixed(1)+'px)';
+    }
+
+    const fun=Math.floor(G.fun);
+    $('fun').style.width=G.fun+'%';$('funN').textContent=fun+'%';$('barA').setAttribute('aria-valuenow',fun);
+    const secs=Math.ceil(G.time);
+    $('clock').textContent=secs;$('clock').classList.toggle('low',secs<=15&&G.mode==='play');
+    const key=String(G.lives);
+    if(key!==heartsKey){
+      heartsKey=key;let h='';
+      for(let i=0;i<3;i++)h+=HEART.replace('<svg','<svg class="'+(i<G.lives?'':'off')+'"');
+      $('hearts').innerHTML=h;
+    }
+
+    let hint='',warn=false;
+    if(G.mode==='title')hint='';
+    else if(G.mode==='caught'){hint='들켰어요!';warn=true}
+    else if(G.mom==='warn'){hint='그림자가 보여요! 엄마가 와요!';warn=true}
+    else if(G.mom==='here'){hint=holding?'숨는 중… 엄마가 갈 때까지 참아요':'엄마다!! 빨리 숨겨!';warn=!holding}
+    else if(G.noteT>0)hint=G.note;
+    else hint=holding?'엄마 없는데… 게임 멈췄어요':'엄마 없다! 마음껏 게임 중';
+    const he=$('hint');he.textContent=hint;he.classList.toggle('warn',warn);
+
+    try{
+      const target=muted?0:(holding&&playing?0.1:0.4);
+      bgm.volume=Math.max(0,Math.min(1,bgm.volume+(target-bgm.volume)*0.2));
+    }catch(e){}
+  }
+
+  function frame(now){
+    const dt=Math.min(.05,(now-last)/1000||0);last=now;
+    if(G.mode==='play'||G.mode==='caught')update(dt);
+    render();
+    requestAnimationFrame(frame);
+  }
+
+  /* ---------- input ---------- */
+  hideBtn.addEventListener('pointerdown',e=>{e.preventDefault();try{hideBtn.setPointerCapture(e.pointerId)}catch(_){}setHide(true)});
+  ['pointerup','pointercancel','lostpointercapture'].forEach(t=>hideBtn.addEventListener(t,()=>setHide(false)));
+  hideBtn.addEventListener('contextmenu',e=>e.preventDefault());
+  hideBtn.addEventListener('keydown',e=>{if(e.code==='Space'||e.code==='Enter')e.preventDefault()});
+  window.addEventListener('keydown',e=>{
+    if(e.repeat)return;
+    if(e.code==='Space'||e.code==='ArrowDown'||e.code==='KeyH'){
+      if(G.mode==='play'||G.mode==='caught'){e.preventDefault();setHide(true)}
+    }
+  });
+  window.addEventListener('keyup',e=>{
+    if(e.code==='Space'||e.code==='ArrowDown'||e.code==='KeyH')setHide(false);
+  });
+  window.addEventListener('blur',()=>setHide(false));
+  document.addEventListener('visibilitychange',()=>{
+    if(document.hidden){stopBgm();setHide(false)}
+    else if(G.mode==='play'||G.mode==='caught')playBgm(BGM.play);
+  });
+
+  $('tabletHit').addEventListener('pointerdown',e=>{
+    if(G.mode!=='play'||holding)return;
+    G.fun=Math.min(100,G.fun+1);sfx.tap();
+    const r=stage.getBoundingClientRect();
+    pop('+1',e.clientX-r.left,e.clientY-r.top-10);
+    const t=$('tablet');t.classList.remove('bump');void t.getBoundingClientRect();t.classList.add('bump');
+  });
+
+  /* hot-reload support */
+  window.claude?.hot?.snapshot?.(()=>({}));
+
+  showTitle();
+  requestAnimationFrame(frame);
+})();
+</script>
